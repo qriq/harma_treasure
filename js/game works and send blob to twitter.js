@@ -66,9 +66,7 @@ gameScene.create = function() {
   this.cameras.main.resetFX();
 
   this.startTime = Date.now();
-  this.elapsedTimeText  = this.add.text(10, 10, 'Time: 0', { fontSize: '16px', color: '#ffffff' });
-  this.elapsedTimeTweet = "";
-  this.finalTextToTweet = "";
+  this.elapsedTimeText = this.add.text(10, 10, 'Time: 0', { fontSize: '16px', color: '#ffffff' });
 
 }; // create END
 
@@ -88,12 +86,6 @@ gameScene.update = function() {
 
   // check player reach treasure
   if (Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), this.treasure.getBounds())) {
-    const elapsedMs = Date.now() - this.startTime;
-    const seconds = Math.floor(elapsedMs / 1000);
-    const milliseconds = elapsedMs % 1000;
-    this.elapsedTimeTweet = `Time: ${seconds}:${milliseconds.toString().padStart(3, '0')}`;
-    // let tweetTime = encodeURIComponent(`${this.elapsedTimeTweet.text}`);
-    this.finalTextToTweet = encodeURIComponent(`I won the Harma Fantasy!!!\nhttps://harma-treasure.vercel.app/\nCheck out my best time!\n${this.elapsedTimeTweet}`);
     this.gameOver();
   }
 
@@ -115,7 +107,6 @@ gameScene.update = function() {
 
      // player touch with enemy
     if (Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), enemies[i].getBounds())) {
-      this.finalTextToTweet = encodeURIComponent(`I lost at Harma Fantasy!\nhttps://harma-treasure.vercel.app/`);
       this.gameOver();
       break;
     }
@@ -126,7 +117,7 @@ gameScene.update = function() {
     const elapsedMs = Date.now() - this.startTime;
     const seconds = Math.floor(elapsedMs / 1000);
     const milliseconds = elapsedMs % 1000;
-    this.elapsedTimeText.setText(`Move - Spacebar. Time: ${seconds}:${milliseconds.toString().padStart(3, '0')}`);
+    this.elapsedTimeText.setText(`Time: ${seconds}:${milliseconds.toString().padStart(3, '0')}`);
   }
 
 
@@ -134,11 +125,11 @@ gameScene.update = function() {
 
 // game over
 gameScene.gameOver = function() {
-  // camera shake
-  this.cameras.main.shake(500);
-
   // set flag Plyer is dead
   this.isPlayerAlive = false;
+
+  // camera shake
+  this.cameras.main.shake(500);
 
   // print time
   const elapsedMs = Date.now() - this.startTime;
@@ -152,32 +143,75 @@ gameScene.gameOver = function() {
   this.elapsedTimeText.setFontSize(32);
 
   // Add a "share tweet" button
-  let shareTweetButton = this.add.text(this.sys.game.config.width / 2 - 100, this.sys.game.config.height / 2 + 50, 'Share on Twitter', { fontSize: '24px', color: '#ffffff', backgroundColor: '#1da1f2', padding: {left: 10, right: 10, top: 5, bottom: 5} });
+  let shareTweetButton = this.add.text(this.sys.game.config.width / 2 - 100, this.sys.game.config.height / 2 + 50, 'Share Tweet', { fontSize: '24px', color: '#ffffff', backgroundColor: '#1da1f2', padding: {left: 10, right: 10, top: 5, bottom: 5} });
   shareTweetButton.setInteractive({ useHandCursor: true });
   shareTweetButton.on('pointerup', () => {
+    // Capture a screenshot
+    this.captureScreenshot((screenshot) => {
+      // Upload the screenshot to local storage
+      this.uploadToLocal(screenshot, (error, localUrl) => {
+        if (error) {
+          console.error('Error uploading image to local storage:', error);
+          return;
+        }
+  
         // Prepare tweet text
-        // let tweetText = encodeURIComponent("I won the Harma Fantasy!!\nhttps://harma-treasure.vercel.app/\nCheck out my score!\n");
-
+        let tweetText = encodeURIComponent("I just played this cool game! Check out my score!");
+  
         // Create tweet sharing URL
-        let tweetUrl = `https://twitter.com/intent/tweet?text=${this.finalTextToTweet}`;
+        let tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(localUrl)}`;
   
         // Open the tweet sharing URL in a new window
         window.open(tweetUrl, '_blank');
+      });
+    });
   });
   
   this.input.keyboard.once('keydown-SPACE', this.restartGame, this);
 }
 
+gameScene.uploadToLocal = function(imageData, callback) {
+  try {
+    localStorage.setItem('game-screenshot', imageData);
+    const localUrl = URL.createObjectURL(dataURItoBlob(imageData));
+    callback(null, localUrl);
+  } catch (error) {
+    callback(error);
+  }
+};
+
+function dataURItoBlob(dataURI) {
+  const byteString = atob(dataURI.split(',')[1]);
+  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeString });
+}
+
+
+
+
+
 gameScene.restartGame = function() {
   // Reset elapsedTimeText position and size
   this.elapsedTimeText.setPosition(10, 10);
   this.elapsedTimeText.setFontSize(16);
-  this.isPlayerAlive = true;
 
   // Resume the scene and restart it
   this.scene.resume();
   this.scene.restart();
 }
+
+gameScene.captureScreenshot = function(callback) {
+  this.game.renderer.snapshot((image) => {
+    callback(image.src);
+  });
+}
+
+
  
 // game configuration
 let config = {
