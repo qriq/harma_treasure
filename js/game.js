@@ -1,45 +1,45 @@
-// создаем новую сцену с именем "Game"
+// create "Game" scene
 let gameScene = new Phaser.Scene('Game');
 
-// некоторые параметры для нашей сцены (это наши собственные переменные - они НЕ являются частью Phaser API)
+// Scene parameters
 gameScene.init = function() {
   this.playerSpeed = 1.5;
   this.enemyMaxY = 280;
   this.enemyMinY = 50;
 }
 
-// загрузка файлов ресурсов для нашей игры
+// Resource loading
 gameScene.preload = function() {
  
-  // загрузка изображений
+  // Image loading
   this.load.image('background', 'assets/background.png');
   this.load.image('player', 'assets/player.png');
   this.load.image('dragon', 'assets/dragon.png');
   this.load.image('treasure', 'assets/treasure.png');
 };
  
-// выполняется один раз, после загрузки ресурсов
+// Run one time after resource loading
 gameScene.create = function() {
  
-   // фон
+   // background
    let bg = this.add.sprite(0, 0, 'background');
 
    this.spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-   // перемещаем начальную точку в верхний левый угол
+   // move Ox to up left angle
    bg.setOrigin(0,0);
 
-   // игрок
+   // player
   this.player = this.add.sprite(40, this.sys.game.config.height / 2, 'player');
  
-  // уменьшить масштаб
+  // decrease scale
   this.player.setScale(0.5);
 
-  // место назначения
+  // destination
   this.treasure = this.add.sprite(this.sys.game.config.width - 80, this.sys.game.config.height / 2, 'treasure');
   this.treasure.setScale(0.6);
 
-  // группа врагов
+  // Enemies group
   this.enemies = this.add.group({
     key: 'dragon',
     repeat: 5,
@@ -51,18 +51,18 @@ gameScene.create = function() {
     }
   });
 
-  // масштабируем врагов
+  // Enemy scale
   Phaser.Actions.ScaleXY(this.enemies.getChildren(), -0.5, -0.5);
 
-  // задаем скорость врагов
+  // Enemiy speed
   Phaser.Actions.Call(this.enemies.getChildren(), function(enemy) {
     enemy.speed = Math.random() * 2 + 1;
   }, this);
 
-  // флаг, что игрок жив
+  // Flag Player is alive
   this.isPlayerAlive = true;
 
-  // сброс эффектов камеры
+  // Reset camera effects
   this.cameras.main.resetFX();
 
   this.startTime = Date.now();
@@ -70,51 +70,49 @@ gameScene.create = function() {
 
 }; // create END
 
-// выполняется каждый кадр (ориентировочно 60 раз в секунду)
+// update 60 time per second
 gameScene.update = function() {
-  // выполняем код, если игрок жив
+  // if player is alive
   if (!this.isPlayerAlive) {
     return;
   }
  
-  // проверяем активный ввод 
+  // check input
   if (this.spacebar.isDown || this.input.activePointer.isDown) {
  
-    // игрок перемещается вперед
+    // player moves ahead
     this.player.x += this.playerSpeed;
   }
 
-  // проверка на столкновение с сокровищем
+  // check player reach treasure
   if (Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), this.treasure.getBounds())) {
     this.gameOver();
   }
 
-  // движение врагов
+  // enemy's move
   let enemies = this.enemies.getChildren();
   let numEnemies = enemies.length;
  
   for (let i = 0; i < numEnemies; i++) {
  
-    // перемещаем каждого из врагов
+    // move ever enemy
     enemies[i].y += enemies[i].speed;
  
-    // разворачиваем движение, если враг достиг границы
+    // revert move when enemy reach a border
     if (enemies[i].y >= this.enemyMaxY && enemies[i].speed > 0) {
       enemies[i].speed *= -1;
     } else if (enemies[i].y <= this.enemyMinY && enemies[i].speed < 0) {
       enemies[i].speed *= -1;
     }
 
-     // столкновение с врагами
+     // player touch with enemy
     if (Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), enemies[i].getBounds())) {
       this.gameOver();
       break;
     }
   }
 
-  // обновление времени на экране
-  // const elapsedTime = Math.floor((Date.now() - this.startTime) / 1000);
-  // this.elapsedTimeText.setText(`Time: ${elapsedTime}`);
+  // time update
   if (this.startTime !== null) {
     const elapsedMs = Date.now() - this.startTime;
     const seconds = Math.floor(elapsedMs / 1000);
@@ -125,39 +123,103 @@ gameScene.update = function() {
 
 }; // update END
 
-// конец игры
+// game over
 gameScene.gameOver = function() {
-  // устанавливаем флаг, что игрок умер
+  // set flag Plyer is dead
   this.isPlayerAlive = false;
- 
-  // дрожание камеры
+
+  // camera shake
   this.cameras.main.shake(500);
 
-  // вывод времени игры
+  // print time
   const elapsedMs = Date.now() - this.startTime;
   const seconds = Math.floor(elapsedMs / 1000);
   const milliseconds = elapsedMs % 1000;
   this.elapsedTimeText.setText(`Time: ${seconds}:${milliseconds.toString().padStart(3, '0')}\nGame Over`);
   this.startTime = null;  //  Stop updating the timer
 
-  // затухание камеры через 250мс
-  this.time.delayedCall(250, function() {
-    this.cameras.main.fade(250);
-  }, [], this);
- 
-  // перезапускаем сцену через 500мс
-  this.time.delayedCall(500, function() {
-    this.scene.restart();
-  }, [], this);
+  // Position the text in the center of the screen and enlarge it
+  this.elapsedTimeText.setPosition(this.sys.game.config.width / 2 - this.elapsedTimeText.width / 2, this.sys.game.config.height / 2 - this.elapsedTimeText.height / 2);
+  this.elapsedTimeText.setFontSize(32);
+
+  // Add a "share tweet" button
+  let shareTweetButton = this.add.text(this.sys.game.config.width / 2 - 100, this.sys.game.config.height / 2 + 50, 'Share Tweet', { fontSize: '24px', color: '#ffffff', backgroundColor: '#1da1f2', padding: {left: 10, right: 10, top: 5, bottom: 5} });
+  shareTweetButton.setInteractive({ useHandCursor: true });
+  shareTweetButton.on('pointerup', () => {
+    // Capture a screenshot
+    this.captureScreenshot((screenshot) => {
+      // Upload the screenshot to local storage
+      this.uploadToLocal(screenshot, (error, localUrl) => {
+        if (error) {
+          console.error('Error uploading image to local storage:', error);
+          return;
+        }
+  
+        // Prepare tweet text
+        let tweetText = encodeURIComponent("I just played this cool game! Check out my score!");
+  
+        // Create tweet sharing URL
+        let tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(localUrl)}`;
+  
+        // Open the tweet sharing URL in a new window
+        window.open(tweetUrl, '_blank');
+      });
+    });
+  });
+  
+  this.input.keyboard.once('keydown-SPACE', this.restartGame, this);
 }
+
+gameScene.uploadToLocal = function(imageData, callback) {
+  try {
+    localStorage.setItem('game-screenshot', imageData);
+    const localUrl = URL.createObjectURL(dataURItoBlob(imageData));
+    callback(null, localUrl);
+  } catch (error) {
+    callback(error);
+  }
+};
+
+function dataURItoBlob(dataURI) {
+  const byteString = atob(dataURI.split(',')[1]);
+  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeString });
+}
+
+
+
+
+
+gameScene.restartGame = function() {
+  // Reset elapsedTimeText position and size
+  this.elapsedTimeText.setPosition(10, 10);
+  this.elapsedTimeText.setFontSize(16);
+
+  // Resume the scene and restart it
+  this.scene.resume();
+  this.scene.restart();
+}
+
+gameScene.captureScreenshot = function(callback) {
+  this.game.renderer.snapshot((image) => {
+    callback(image.src);
+  });
+}
+
+
  
-// конфигурация нашей игры
+// game configuration
 let config = {
-  type: Phaser.AUTO,  // Phaser сам решает как визуализировать нашу игру (WebGL или Canvas)
-  width: 640, // ширина игры
-  height: 360, // высота игры
-  scene: gameScene // наша созданная выше сцена
+  type: Phaser.AUTO,  // Phaser decides how to visualize our game (WebGL или Canvas)
+  width: 640, // game widht
+  height: 360, // game height
+  scene: gameScene // our created scene
 };
  
-// создаем игру и передам ей конфигурацию
+// Game create with apply configuration
 let game = new Phaser.Game(config);
